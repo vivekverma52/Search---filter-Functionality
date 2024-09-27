@@ -7,6 +7,12 @@ function SearchFilter() {
   const [filterType, setFilterType] = useState('all');
   const [searchData, setSearchData] = useState([]);
   const [debounceVal, setDebounceVal] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
+
+
+  const [sortField, setSortField] = useState('vendor_name'); 
+  const [sortOrder, setSortOrder] = useState('asc'); 
 
   useEffect(() => {
     setData(invoices.invoices);
@@ -24,13 +30,10 @@ function SearchFilter() {
   }, [filterVal]);
 
   useEffect(() => {
+    let filterResult = searchData;
+
     const searchTerm = debounceVal;
-
-    if (searchTerm === '') {
-      setData(searchData); 
-    } else {
-      let filterResult;
-
+    if (searchTerm !== '') {
       if (filterType === 'vendor_name') {
         filterResult = searchData.filter(item =>
           item.vendor_name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -55,15 +58,48 @@ function SearchFilter() {
           item.service_type.toLowerCase().includes(searchTerm.toLowerCase())
         );
       }
-
-    
-      if (filterResult.length > 0) {
-        setData(filterResult);
-      } else {
-        setData([]);
-      }
     }
-  }, [debounceVal, filterType, searchData]); 
+
+    if (sortField === 'vendor_name') {
+      filterResult.sort((a, b) => {
+        if (sortOrder === 'asc') {
+          return a.vendor_name > b.vendor_name ? 1 : -1;
+        } else {
+          return a.vendor_name < b.vendor_name ? 1 : -1;
+        }
+      });
+    }
+
+
+    const totalItems = filterResult.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+    const paginatedData = filterResult.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
+
+    setData(paginatedData);
+
+  }, [debounceVal, filterType, searchData, sortField, sortOrder, currentPage, itemsPerPage]);
+
+  const handleSort = () => {
+    const newSortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+    setSortField('vendor_name');
+    setSortOrder(newSortOrder);
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if(currentPage < Math.ceil(searchData.length / itemsPerPage)) {
+      setCurrentPage(currentPage + 1);
+    }
+  }
 
   return (
     <div>
@@ -78,7 +114,6 @@ function SearchFilter() {
           <option value="invoice_id">Invoice ID</option>
           <option value="action">Action</option>
           <option value="service_type">Service Type</option>
-
         </select>
         <input
           type="search"
@@ -93,7 +128,9 @@ function SearchFilter() {
         <thead>
           <tr>
             <th>Invoice ID</th>
-            <th>Vendor Name</th>
+            <th onClick={handleSort}>
+              Vendor Name {sortOrder === 'asc' ? '↑' : '↓'}
+            </th>
             <th>Invoice Date</th>
             <th>Amount</th>
             <th>Due Date</th>
@@ -123,6 +160,16 @@ function SearchFilter() {
           )}
         </tbody>
       </table>
+
+      <div className="pagination-controls">
+        <button onClick={handlePreviousPage} disabled={currentPage === 1}>
+          Previous
+        </button>
+        <span>Page {currentPage}</span>
+        <button onClick={handleNextPage} disabled={currentPage === Math.ceil(searchData.length / itemsPerPage)}>
+          Next
+        </button>
+      </div>
     </div>
   );
 }
